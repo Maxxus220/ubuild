@@ -6,6 +6,7 @@ import "core:mem"
 import "core:dynlib"
 import "core:strings"
 import "core:path/filepath"
+import "core:thread"
 import "base:runtime"
 
 Script_Api :: struct  {
@@ -15,6 +16,9 @@ Script_Api :: struct  {
 
 main :: proc() {
 	defer free_all(context.temp_allocator)
+
+	// thread_pool : thread.Pool
+	// thread.pool_init(&thread_pool, context.allocator, thread_count = 4)
 
 	// process_desc := os.Process_Desc{command = {"which", "gcc"}}
 	// state, stdout, stderr, proc_err := os.process_exec(process_desc, context.temp_allocator)
