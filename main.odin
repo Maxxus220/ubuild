@@ -14,7 +14,6 @@ import "base:runtime"
 /**
   * TODO-LIST
   * - Specify what script provides to build tool
-  * - Allow user to specify path to build script
   * - Give user utilities to build C/C++
   *   - Build something (0->100)
   * - Figure out how to package Odin
