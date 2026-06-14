@@ -92,7 +92,11 @@ main :: proc() {
 	state, stdout, stderr, proc_err = os.process_exec(odin_build_script_proc_desc, context.temp_allocator)
 	assert(proc_err == nil, fmt.tprintf("Error while running '%s': %v\n", strings.join(build_user_script_command, " ", context.temp_allocator), proc_err))
 	if state.exit_code != 0 {
+		stdout_trimmed := strings.trim_space(cast(string)stdout)
+		stderr_trimmed := strings.trim_space(cast(string)stderr)
 		fmt.printf("'%s' failed with exit-code: %v\n", strings.join(build_user_script_command, " ", context.temp_allocator), state.exit_code)
+		fmt.printf("stdout:\n%s\n", stdout_trimmed)
+		fmt.printf("stderr:\n%s\n", stderr_trimmed)
 		os.exit(1)
 	}
 	fmt.println("Built 'script.so'")
