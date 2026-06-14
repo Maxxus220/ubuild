@@ -4,5 +4,5 @@ import "core:fmt"
 
 @(export)
 ubuild_script :: proc() {
-	fmt.println("Hello script!")
+	fmt.println("Hello script! REMIX2...")
 }
