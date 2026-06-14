@@ -2,6 +2,7 @@ package script
 
 import "core:fmt"
 
-script :: proc() {
+@(export)
+ubuild_script :: proc() {
 	fmt.println("Hello script!")
 }

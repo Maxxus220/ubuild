@@ -6,6 +6,11 @@ import "core:mem"
 import "core:dynlib"
 import "base:runtime"
 
+Script_Api :: struct  {
+	lib : dynlib.Library,
+	script : proc()
+}
+
 main :: proc() {
 	my_arena := mem.Arena{}
 	data, alloc_err := mem.new([2048]u8)
@@ -18,18 +23,12 @@ main :: proc() {
 	state, stdout, stderr, proc_err := os.process_exec(process_desc, mem.arena_allocator(&my_arena))
 	fmt.printf("%s\n", stdout)
 
-	lib, load_ok := dynlib.load_library("./script.so")
+	script_api := Script_Api{}
+	count, load_ok := dynlib.initialize_symbols(&script_api, "./script.so", symbol_prefix = "ubuild_", handle_field_name = "lib")
 	if !load_ok {
 		fmt.eprintln(dynlib.last_error())
 		os.exit(1)
 	}
 
-	symbol, sym_ok := dynlib.symbol_address(lib, "script")
-	if !sym_ok {
-		fmt.eprintln(dynlib.last_error())
-		os.exit(1)
-	}
-
-	script_proc := cast(proc ())symbol
-	script_proc()
+	script_api.script()
 }
