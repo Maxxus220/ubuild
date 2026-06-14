@@ -9,6 +9,18 @@ import "core:path/filepath"
 import "core:thread"
 import "base:runtime"
 
+/**
+  * TODO-LIST
+  * - Specify what script provides to build tool
+  * - Allow user to specify path to build script
+  * - Give user utilities to build C/C++
+  *   - Build something (0->100)
+  * - Figure out how to package Odin
+  * - Figure out how we want users to provide tools
+  * - Provide a framework for running shell commands in a visible way
+  * - Provide a framework for "tasks" that depend on each other and have outputs
+ */
+
 Script_Api :: struct  {
 	lib : dynlib.Library,
 	script : proc()
