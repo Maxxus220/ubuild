@@ -1,3 +1,4 @@
 *.so
 ubuild
 *.log
+a.out

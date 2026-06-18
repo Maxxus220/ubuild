@@ -24,7 +24,7 @@ import "core:thread"
 
 Script_Api :: struct {
 	lib:    dynlib.Library,
-	script: proc(),
+	script: proc() -> string,
 }
 
 custom_flag_checker :: proc(
@@ -100,24 +100,24 @@ main :: proc() {
 			which_odin_proc_desc,
 			context.temp_allocator,
 		)
-		assert(proc_err == os.General_Error.None, fmt.tprintf("'which odin' failed: %v", proc_err))
+		assert(proc_err == nil, fmt.tprintf("'which odin' failed: %v", proc_err))
 		which_odin_stdout_cleaned := strings.trim_space(cast(string)stdout)
-		log.infof("which odin: %s\n", which_odin_stdout_cleaned)
+		log.infof("which odin: %s", which_odin_stdout_cleaned)
 
 		abs_odin_filepath, abs_err := filepath.abs(
 			which_odin_stdout_cleaned,
 			context.temp_allocator,
 		)
 		assert(
-			abs_err == mem.Allocator_Error.None,
+			abs_err == nil,
 			fmt.tprintf("Failed to get abs path of %s: %v", which_odin_stdout_cleaned, abs_err),
 		)
-		log.infof("abs_odin_filepath: %s\n", abs_odin_filepath)
+		log.infof("abs_odin_filepath: %s", abs_odin_filepath)
 	}
 
 	// Build user script into .so
 	{
-		log.infof("user script file: %s\n", cli_opts.script_path)
+		log.infof("user script file: %s", cli_opts.script_path)
 		build_user_script_command: []string = {
 			"odin",
 			"build",
@@ -145,12 +145,12 @@ main :: proc() {
 			stdout_trimmed := strings.trim_space(cast(string)stdout)
 			stderr_trimmed := strings.trim_space(cast(string)stderr)
 			log.errorf(
-				"'%s' failed with exit-code: %v\n",
+				"'%s' failed with exit-code: %v",
 				strings.join(build_user_script_command, " ", context.temp_allocator),
 				state.exit_code,
 			)
-			log.infof("stdout:\n%s\n", stdout_trimmed)
-			log.infof("stderr:\n%s\n", stderr_trimmed)
+			log.infof("stdout:\n%s", stdout_trimmed)
+			log.infof("stderr:\n%s", stderr_trimmed)
 			os.exit(1)
 		}
 		log.info("Built 'script.so'")
@@ -168,5 +168,53 @@ main :: proc() {
 		assert(load_ok, fmt.tprintf("Failed to initialize script API: %v", dynlib.last_error()))
 	}
 
-	script_api.script()
+	file_to_build := script_api.script()
+	log.infof("%s", file_to_build)
+
+	// Find gcc binary
+	abs_gcc_filepath: string
+	{
+		which_gcc_proc_desc := os.Process_Desc {
+			command = {"which", "gcc"},
+		}
+		state, stdout, stderr, proc_err := os.process_exec(
+			which_gcc_proc_desc,
+			context.temp_allocator,
+		)
+		assert(proc_err == nil, fmt.tprintf("'which gcc' failed: %v", proc_err))
+		which_gcc_stdout_cleaned := strings.trim_space(cast(string)stdout)
+		log.infof("which gcc: %s", which_gcc_stdout_cleaned)
+
+		temp_abs_gcc_filepath, abs_err := filepath.abs(
+			which_gcc_stdout_cleaned,
+			context.temp_allocator,
+		)
+		assert(
+			abs_err == nil,
+			fmt.tprintf("Failed to get abs path of %s: %v", which_gcc_stdout_cleaned, abs_err),
+		)
+		log.infof("abs_gcc_filepath: %s", temp_abs_gcc_filepath)
+		abs_gcc_filepath = temp_abs_gcc_filepath
+	}
+
+	// Build the file
+	{
+		log.info(abs_gcc_filepath)
+		log.info(file_to_build)
+		build_command := os.Process_Desc {
+			command = {abs_gcc_filepath, file_to_build},
+		}
+		build_command_str, join_alloc_err := strings.join(
+			build_command.command,
+			" ",
+			context.temp_allocator,
+		)
+		assert(
+			join_alloc_err == nil,
+			fmt.tprintf("Failed to join build command string: %v", join_alloc_err),
+		)
+		state, stdout, stderr, proc_err := os.process_exec(build_command, context.temp_allocator)
+		assert(proc_err == nil, fmt.tprintf("'%s' failed: %v", build_command_str, proc_err))
+		log.info("Built the thing")
+	}
 }
