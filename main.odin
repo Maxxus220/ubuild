@@ -56,6 +56,14 @@ custom_flag_checker :: proc(
 main :: proc() {
 	defer free_all(context.temp_allocator)
 
+	// Set up logger
+	log_file, log_file_err := os.open("ubuild.log", os.File_Flags{.Create, .Write})
+	assert(log_file_err == nil, fmt.tprintf("Failed to open log file: %v", log_file_err))
+	console_logger := log.create_console_logger()
+	file_logger := log.create_file_logger(log_file)
+	multi_logger := log.create_multi_logger(console_logger, file_logger)
+	context.logger = multi_logger
+
 	// Arg parsing
 	Options :: struct {
 		script_path: string `args:"pos=0,required" usage:"Path to the user's script"`,
@@ -74,8 +82,6 @@ main :: proc() {
 				os.exit(1)
 			}
 		}
-
-		fmt.printf("%#v\n", cli_opts)
 	}
 
 	// thread_pool : thread.Pool
@@ -96,7 +102,7 @@ main :: proc() {
 		)
 		assert(proc_err == os.General_Error.None, fmt.tprintf("'which odin' failed: %v", proc_err))
 		which_odin_stdout_cleaned := strings.trim_space(cast(string)stdout)
-		fmt.printf("which odin: %s\n", which_odin_stdout_cleaned)
+		log.infof("which odin: %s\n", which_odin_stdout_cleaned)
 
 		abs_odin_filepath, abs_err := filepath.abs(
 			which_odin_stdout_cleaned,
@@ -106,12 +112,12 @@ main :: proc() {
 			abs_err == mem.Allocator_Error.None,
 			fmt.tprintf("Failed to get abs path of %s: %v", which_odin_stdout_cleaned, abs_err),
 		)
-		fmt.printf("abs_odin_filepath: %s\n", abs_odin_filepath)
+		log.infof("abs_odin_filepath: %s\n", abs_odin_filepath)
 	}
 
 	// Build user script into .so
 	{
-		fmt.printf("user script file: %s\n", cli_opts.script_path)
+		log.infof("user script file: %s\n", cli_opts.script_path)
 		build_user_script_command: []string = {
 			"odin",
 			"build",
@@ -138,16 +144,16 @@ main :: proc() {
 		if state.exit_code != 0 {
 			stdout_trimmed := strings.trim_space(cast(string)stdout)
 			stderr_trimmed := strings.trim_space(cast(string)stderr)
-			fmt.printf(
+			log.errorf(
 				"'%s' failed with exit-code: %v\n",
 				strings.join(build_user_script_command, " ", context.temp_allocator),
 				state.exit_code,
 			)
-			fmt.printf("stdout:\n%s\n", stdout_trimmed)
-			fmt.printf("stderr:\n%s\n", stderr_trimmed)
+			log.infof("stdout:\n%s\n", stdout_trimmed)
+			log.infof("stderr:\n%s\n", stderr_trimmed)
 			os.exit(1)
 		}
-		fmt.println("Built 'script.so'")
+		log.info("Built 'script.so'")
 	}
 
 	// Load user script
