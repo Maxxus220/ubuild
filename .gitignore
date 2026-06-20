@@ -2,3 +2,4 @@
 ubuild
 *.log
 a.out
+*.o

@@ -11,6 +11,8 @@ import "core:path/filepath"
 import "core:strings"
 import "core:thread"
 
+import "scripting"
+
 /**
   * TODO-LIST
   * - Specify what script provides to build tool
@@ -23,7 +25,7 @@ import "core:thread"
 
 Script_Api :: struct {
 	lib:    dynlib.Library,
-	script: proc() -> string,
+	script: proc() -> scripting.BuildSpec,
 }
 
 custom_flag_checker :: proc(
@@ -123,6 +125,7 @@ main :: proc() {
 			cli_opts.script_path,
 			"-file",
 			"-build-mode:shared",
+			"-collection:ubuild=src",
 			"-out:script.so",
 		}
 		odin_build_script_proc_desc := os.Process_Desc {
@@ -167,8 +170,12 @@ main :: proc() {
 		assert(load_ok, fmt.tprintf("Failed to initialize script API: %v", dynlib.last_error()))
 	}
 
-	file_to_build := script_api.script()
-	log.infof("%s", file_to_build)
+	build_spec := script_api.script()
+	log.infof("%s", build_spec.tu_build_specs[0].file_name)
+
+	for tu in build_spec.tu_build_specs {
+		log.info(tu)
+	}
 
 	// Find gcc binary
 	abs_gcc_filepath: string
@@ -196,24 +203,30 @@ main :: proc() {
 		abs_gcc_filepath = temp_abs_gcc_filepath
 	}
 
-	// Build the file
+	// Build the user's spec
 	{
 		log.info(abs_gcc_filepath)
-		log.info(file_to_build)
-		build_command := os.Process_Desc {
-			command = {abs_gcc_filepath, file_to_build},
+		log.info(build_spec)
+
+		for tu in build_spec.tu_build_specs {
+			build_command := os.Process_Desc {
+				command = {abs_gcc_filepath, "-c", tu.file_name},
+			}
+			build_command_str, join_alloc_err := strings.join(
+				build_command.command,
+				" ",
+				context.temp_allocator,
+			)
+			assert(
+				join_alloc_err == nil,
+				fmt.tprintf("Failed to join build command string: %v", join_alloc_err),
+			)
+			state, stdout, stderr, proc_err := os.process_exec(
+				build_command,
+				context.temp_allocator,
+			)
+			assert(proc_err == nil, fmt.tprintf("'%s' failed: %v", build_command_str, proc_err))
 		}
-		build_command_str, join_alloc_err := strings.join(
-			build_command.command,
-			" ",
-			context.temp_allocator,
-		)
-		assert(
-			join_alloc_err == nil,
-			fmt.tprintf("Failed to join build command string: %v", join_alloc_err),
-		)
-		state, stdout, stderr, proc_err := os.process_exec(build_command, context.temp_allocator)
-		assert(proc_err == nil, fmt.tprintf("'%s' failed: %v", build_command_str, proc_err))
 		log.info("Built the thing")
 	}
 }

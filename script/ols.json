@@ -1,0 +1,9 @@
+{
+    "collections": [
+        {
+            "name": "ubuild",
+            "path": "../src"
+        }
+    ]
+}
+
