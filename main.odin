@@ -15,7 +15,6 @@ import "core:thread"
   * TODO-LIST
   * - Specify what script provides to build tool
   * - Give user utilities to build C/C++
-  *   - Build something (0->100)
   * - Figure out how to package Odin
   * - Figure out how we want users to provide tools
   * - Provide a framework for running shell commands in a visible way
